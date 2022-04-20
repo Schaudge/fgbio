@@ -129,28 +129,35 @@ object Metric extends LazyLogging {
     reflectiveBuilder.build(reflectiveBuilder.argumentLookup.ordered.map(arg => arg.value getOrElse unreachable(s"Arguments not set: ${arg.name}")))
   }
 
+  private[util] def failReading[T <: Metric](clazz: Class[T],
+                                             message: String,
+                                             lineNumber: Option[Int] = None,
+                                             throwable: Option[Throwable] = None,
+                                             source: Option[String] = None): Unit = {
+    val sourceMessage = source.map("\nIn source: " + _).getOrElse("")
+    val prefix        = lineNumber match {
+      case None    => "For metric"
+      case Some(n) => s"On line #$n for metric"
+    }
+    val fullMessage   = s"$prefix '${clazz.getSimpleName}'$sourceMessage\n$message"
+    throwable.foreach { thr =>
+      val stringWriter = new StringWriter
+      thr.printStackTrace(new PrintWriter(stringWriter))
+      val banner = "#" * 80
+      logger.debug(banner)
+      logger.debug(stringWriter.toString)
+      logger.debug(banner)
+    }
+    throw FailureException(message=Some(fullMessage))
+  }
+
   /** Reads metrics from a set of lines.  The first line should be the header with the field names.  Each subsequent
     * line should be a single metric. */
   def iterator[T <: Metric](lines: Iterator[String], source: Option[String] = None)(implicit tt: ru.TypeTag[T]): Iterator[T] = {
     val clazz: Class[T]   = ReflectionUtil.typeTagToClass[T]
 
-    def fail(lineNumber: Int,
-             message: String,
-             throwable: Option[Throwable] = None): Unit = {
-      val sourceMessage = source.map("\nIn source: " + _).getOrElse("")
-      val fullMessage   = s"On line #$lineNumber for metric '${clazz.getSimpleName}'$sourceMessage\n$message"
-      throwable.foreach { thr =>
-        val stringWriter = new StringWriter
-        thr.printStackTrace(new PrintWriter(stringWriter))
-        val banner = "#" * 80
-        logger.debug(banner)
-        logger.debug(stringWriter.toString)
-        logger.debug(banner)
-      }
-      throw FailureException(message=Some(fullMessage))
-    }
 
-    if (lines.isEmpty) fail(lineNumber=1, message="No header found")
+    if (lines.isEmpty) failReading(clazz=clazz, message="No header found", lineNumber=Some(1), source=source)
     val parser = new DelimitedDataParser(lines=lines, delimiter=Delimiter, ignoreBlankLines=false, trimFields=true)
     val reflectiveBuilder = new ReflectiveBuilder(clazz)
 
@@ -158,7 +165,7 @@ object Metric extends LazyLogging {
       build(
         reflectiveBuilder = reflectiveBuilder,
         toArg             = i => row[String](i),
-        fail              = (message, throwable) => fail(rowIndex+2, message, throwable)
+        fail              = (message, throwable) => failReading(clazz=clazz, message=message, lineNumber=Some(rowIndex+2), throwable=throwable, source=source)
       )
     }
   }
@@ -236,20 +243,6 @@ object MetricSorter {
     private val clazz: Class[T]   = ReflectionUtil.typeTagToClass[T]
     private val reflectiveBuilder = new ReflectiveBuilder(clazz)
 
-    private def fail(message: String,
-                     throwable: Option[Throwable] = None): Unit = {
-      val fullMessage   = s"For metric '${clazz.getSimpleName}'\n$message"
-      throwable.foreach { thr =>
-        val stringWriter = new StringWriter
-        thr.printStackTrace(new PrintWriter(stringWriter))
-        val banner = "#" * 80
-        logger.debug(banner)
-        logger.debug(stringWriter.toString)
-        logger.debug(banner)
-      }
-      throw FailureException(message=Some(fullMessage))
-    }
-
     /** Encode the metric into an array of bytes. */
     def encode(metric: T): Array[Byte] = metric.values.mkString(Metric.DelimiterAsString).getBytes
 
@@ -259,7 +252,7 @@ object MetricSorter {
       Metric.build(
         reflectiveBuilder = reflectiveBuilder,
         toArg = i => fields(i),
-        fail  = fail
+        fail  = (message, throwable) => Metric.failReading(clazz=clazz, message=message, throwable=throwable)
       )
     }
   }
