@@ -34,7 +34,6 @@ import scala.reflect.runtime.{universe => ru}
   * @param maxObjectsInRam the maximum number of metrics to keep in memory before spilling to disk
   * @param keyfunc method to convert a metric to an ordered key
   * @param tmpDir the temporary directory in which to spill to disk
-  * @param codec the codec for encoding and decoding the metric
   * @param tt the type tag for [[T]]
   * @tparam Key the key to use for sorting metrics
   * @tparam T the metric type
@@ -42,10 +41,10 @@ import scala.reflect.runtime.{universe => ru}
 class MetricSorter[Key <: Ordered[Key], T <: Metric](maxObjectsInRam: Int = MetricSorter.MaxInMemory,
                                                      keyfunc: T => Key,
                                                      tmpDir: DirPath = Io.tmpDir,
-                                                     codec: Sorter.Codec[T] = new MetricSorter.MetricSorterCodec[T]()
+
                                                     )(implicit tt: ru.TypeTag[T]) extends Sorter[T, Key](
   maxObjectsInRam = maxObjectsInRam,
-  codec           = codec,
+  codec           = new MetricSorter.MetricSorterCodec[T](),
   keyfunc         = keyfunc,
   tmpDir          = tmpDir
 )
