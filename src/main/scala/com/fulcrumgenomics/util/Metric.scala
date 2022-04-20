@@ -102,7 +102,7 @@ object Metric extends LazyLogging {
   private[util] def build[T <: Metric](reflectiveBuilder: ReflectiveBuilder[T],
                                        toArg: Int => String,
                                        fail: (String, Option[Throwable]) => Unit
-                                      ): T = {
+                                      )(implicit tt: ru.TypeTag[T]): T = {
     val names = Metric.names[T]
     forloop(from = 0, until = names.length) { i =>
       reflectiveBuilder.argumentLookup.forField(names(i)) match {
