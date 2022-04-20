@@ -101,9 +101,10 @@ object Metric extends LazyLogging {
 
   private[util] def build[T <: Metric](reflectiveBuilder: ReflectiveBuilder[T],
                                        toArg: Int => String,
+                                       argNames: Option[Seq[String]] = None,
                                        fail: (String, Option[Throwable]) => Unit
                                       )(implicit tt: ru.TypeTag[T]): T = {
-    val names = Metric.names[T]
+    val names = argNames.getOrElse(Metric.names[T])
     forloop(from = 0, until = names.length) { i =>
       reflectiveBuilder.argumentLookup.forField(names(i)) match {
         case Some(arg) =>
@@ -154,17 +155,18 @@ object Metric extends LazyLogging {
   /** Reads metrics from a set of lines.  The first line should be the header with the field names.  Each subsequent
     * line should be a single metric. */
   def iterator[T <: Metric](lines: Iterator[String], source: Option[String] = None)(implicit tt: ru.TypeTag[T]): Iterator[T] = {
-    val clazz: Class[T]   = ReflectionUtil.typeTagToClass[T]
-
+    val clazz: Class[T]  = ReflectionUtil.typeTagToClass[T]
 
     if (lines.isEmpty) failReading(clazz=clazz, message="No header found", lineNumber=Some(1), source=source)
-    val parser = new DelimitedDataParser(lines=lines, delimiter=Delimiter, ignoreBlankLines=false, trimFields=true)
+    val parser            = new DelimitedDataParser(lines=lines, delimiter=Delimiter, ignoreBlankLines=false, trimFields=true)
+    val names             = parser.headers.toIndexedSeq
     val reflectiveBuilder = new ReflectiveBuilder(clazz)
 
     parser.zipWithIndex.map { case (row, rowIndex) =>
       build(
         reflectiveBuilder = reflectiveBuilder,
         toArg             = i => row[String](i),
+        argNames          = Some(names),
         fail              = (message, throwable) => failReading(clazz=clazz, message=message, lineNumber=Some(rowIndex+2), throwable=throwable, source=source)
       )
     }
