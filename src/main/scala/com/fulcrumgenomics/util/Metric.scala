@@ -101,7 +101,7 @@ object Metric extends LazyLogging {
 
   private[util] def build[T <: Metric](reflectiveBuilder: ReflectiveBuilder[T],
                                        toArg: Int => String,
-                                       fail: (String, Option[Throwable]) => ()
+                                       fail: (String, Option[Throwable]) => Unit
                                       ): T = {
     val names = Metric.names[T]
     forloop(from = 0, until = names.length) { i =>
