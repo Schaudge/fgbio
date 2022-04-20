@@ -163,7 +163,6 @@ object Metric {
   def writer[T <: Metric](writer: Writer)(implicit tt: ru.TypeTag[T]): MetricWriter[T] = new MetricWriter[T](writer)
 }
 
-
 /**
   * Base trait for metrics.
   *
