@@ -261,11 +261,6 @@ object MetricSorter {
         toArg = i => fields(i),
         fail  = fail
       )
-
-      // build it.  NB: if arguments are missing values, then an exception will be thrown here
-      // Also, we don't use the default "build()" method since if a collection or option is empty, it will be treated as
-      // missing.
-      reflectiveBuilder.build(reflectiveBuilder.argumentLookup.ordered.map(arg => arg.value getOrElse unreachable(s"Arguments not set: ${arg.name}")))
     }
   }
 }
