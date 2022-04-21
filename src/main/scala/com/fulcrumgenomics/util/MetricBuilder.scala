@@ -34,7 +34,9 @@ import java.io.{PrintWriter, StringWriter}
 import scala.reflect.runtime.{universe => ru}
 import scala.util.{Failure, Success}
 
-/** Class for building metrics of type [[T]]
+/** Class for building metrics of type [[T]].
+  *
+  * This is not thread-safe.
   *
   * @param source optionally, the source of reading (e.g. file)
   * @tparam T the metric type
@@ -77,6 +79,8 @@ class MetricBuilder[T <: Metric](source: Option[String] = None)(implicit tt: ru.
     * @return a new instance of type [[T]]
     */
   def fromArgMap(argMap: Map[String, String], lineNumber: Option[Int] = None): T = {
+    reflectiveBuilder.reset() // reset the arguments to their initial values
+
     val names = argMap.keys.toIndexedSeq
     forloop(from = 0, until = names.length) { i =>
       reflectiveBuilder.argumentLookup.forField(names(i)) match {
@@ -107,7 +111,8 @@ class MetricBuilder[T <: Metric](source: Option[String] = None)(implicit tt: ru.
     // build it.  NB: if arguments are missing values, then an exception will be thrown here
     // Also, we don't use the default "build()" method since if a collection or option is empty, it will be treated as
     // missing.
-    reflectiveBuilder.build(reflectiveBuilder.argumentLookup.ordered.map(arg => arg.value getOrElse unreachable(s"Arguments not set: ${arg.name}")))
+    val params = reflectiveBuilder.argumentLookup.ordered.map(arg => arg.value getOrElse unreachable(s"Arguments not set: ${arg.name}"))
+    reflectiveBuilder.build(params)
   }
 
   /** Logs the throwable, if given, and throws a [[FailureException]] with information about when reading metrics fails
