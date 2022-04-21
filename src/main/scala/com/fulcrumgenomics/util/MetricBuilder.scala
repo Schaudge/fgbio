@@ -52,8 +52,8 @@ class MetricBuilder[T <: Metric](source: Option[String] = None)(implicit tt: ru.
     * @param lineNumber optionally, the line number when building a metric from a line in a file
     * @return
     */
-  def build(line: String, delim: String = Metric.DelimiterAsString, lineNumber: Option[Int] = None): T = {
-    build(values = line.split(delim), lineNumber = lineNumber)
+  def fromLine(line: String, delim: String = Metric.DelimiterAsString, lineNumber: Option[Int] = None): T = {
+    fromValues(values = line.split(delim), lineNumber = lineNumber)
   }
 
   /** Builds a metric from values for the complete set of metric fields
@@ -62,12 +62,12 @@ class MetricBuilder[T <: Metric](source: Option[String] = None)(implicit tt: ru.
     * @param lineNumber optionally, the line number when building a metric from a line in a file
     * @return
     */
-  def build(values: Iterable[String], lineNumber: Option[Int] = None): T = {
+  def fromValues(values: Iterable[String], lineNumber: Option[Int] = None): T = {
     val vals = values.toIndexedSeq
     if (names.length != vals.length) {
       fail(message = f"Failed decoding: expected '${names.length}' fields, found '${vals.length}'.", lineNumber = lineNumber)
     }
-    build(argMap = names.zip(values).toMap, lineNumber = lineNumber)
+    fromArgMap(argMap = names.zip(values).toMap, lineNumber = lineNumber)
   }
 
   /** Builds a metric of type [[T]]
@@ -76,7 +76,7 @@ class MetricBuilder[T <: Metric](source: Option[String] = None)(implicit tt: ru.
     * @param lineNumber optionally, the line number when building a metric from a line in a file
     * @return a new instance of type [[T]]
     */
-  def build(argMap: Map[String, String], lineNumber: Option[Int] = None): T = {
+  def fromArgMap(argMap: Map[String, String], lineNumber: Option[Int] = None): T = {
     val names = argMap.keys.toIndexedSeq
     forloop(from = 0, until = names.length) { i =>
       reflectiveBuilder.argumentLookup.forField(names(i)) match {

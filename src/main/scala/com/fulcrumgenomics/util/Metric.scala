@@ -106,7 +106,7 @@ object Metric {
 
     parser.zipWithIndex.map { case (row, rowIndex) =>
       val argMap = names.zipWithIndex.map { case (name, i) => name -> row[String](i) }.toMap
-      builder.build(argMap=argMap, lineNumber=Some(rowIndex+2))
+      builder.fromArgMap(argMap=argMap, lineNumber=Some(rowIndex+2))
     }
   }
 

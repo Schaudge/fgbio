@@ -64,7 +64,7 @@ object MetricSorter {
     /** Decode a metric from an array of bytes. */
     def decode(bs: Array[Byte], start: Int, length: Int): T = {
       val fields = new String(bs.slice(from = start, until = start + length)).split(Metric.DelimiterAsString)
-      builder.build(fields)
+      builder.fromValues(fields)
     }
   }
 }
